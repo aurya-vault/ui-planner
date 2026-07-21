@@ -17,7 +17,9 @@ services:
       - ../../data:/app/data
     networks:
       - default
-      - npm-net
+      npm-net:
+        aliases:
+          - ui-planner
 
 networks:
   npm-net:
