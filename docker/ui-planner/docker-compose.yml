@@ -1,3 +1,5 @@
+name: ui-planner
+
 services:
   ui-planner:
     build:
