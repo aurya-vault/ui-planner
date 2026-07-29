@@ -16,7 +16,7 @@ services:
     volumes:
       - ../../data:/app/data
     networks:
-      - default
+      default:
       npm-net:
         aliases:
           - ui-planner
