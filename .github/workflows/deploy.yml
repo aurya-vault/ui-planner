@@ -33,7 +33,10 @@ jobs:
           set -euo pipefail
           cd /opt/projects/ui-planner
           git fetch --all --tags --prune
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ -n "${{ inputs.ref }}" ]; then
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            git fetch origin "${{ github.head_ref }}"
+            git checkout --detach FETCH_HEAD
+          elif [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ -n "${{ inputs.ref }}" ]; then
             git checkout --detach "${{ inputs.ref }}"
           else
             git reset --hard origin/main
@@ -53,6 +56,9 @@ jobs:
           cd /opt/projects/ui-planner
           SHA=$(git rev-parse --short HEAD)
           echo "deployed: $SHA  reason: ${{ inputs.reason }}"
-          docker compose build
-          docker compose up -d --remove-orphans
+          docker compose -f docker/ui-planner/docker-compose.yml build
+          for img in $(docker compose -f docker/ui-planner/docker-compose.yml config --images); do
+            docker tag "$img" "${img%:*}:$SHA" 2>/dev/null || true
+          done
+          docker compose -f docker/ui-planner/docker-compose.yml up -d --remove-orphans
           docker ps --filter name=ui-planner
