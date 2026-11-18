@@ -1,20 +1,58 @@
-name: Deploy UI Planner
+name: Deploy ui-planner
 
 on:
   push:
     branches: [main]
+    paths-ignore:
+      - 'docs/**'
+      - '**/*.md'
+  pull_request:            # 只跑 test,不部署
   workflow_dispatch:
+    inputs:
+      ref:
+        description: '目标 tag 或提交(留空 = origin/main)'
+        required: false
+        default: ''
+      reason:
+        description: '回退原因(回退时必填)'
+        required: false
+        default: ''
+
+concurrency:
+  group: deploy-ui-planner
+  cancel-in-progress: false
 
 jobs:
-  deploy:
+  test:
     runs-on: aurya
     if: github.actor == 'pxMan79'
+    timeout-minutes: 30
     steps:
-      - name: Sync and deploy
+      - name: Sync source
         run: |
-          set -e
+          set -euo pipefail
           cd /opt/projects/ui-planner
-          git fetch --all --prune
-          git reset --hard origin/main
-          docker compose -f docker/ui-planner/docker-compose.yml up -d --build --remove-orphans
+          git fetch --all --tags --prune
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ -n "${{ inputs.ref }}" ]; then
+            git checkout --detach "${{ inputs.ref }}"
+          else
+            git reset --hard origin/main
+          fi
+          echo "test ref: $(git rev-parse HEAD)"
+      # - name: Test
+      #   在这里跑一次性容器的测试/冒烟;失败则 deploy 不会执行(needs: test)
+
+  deploy:
+    needs: test
+    if: github.event_name != 'pull_request' && github.actor == 'pxMan79'
+    runs-on: aurya
+    steps:
+      - name: Deploy
+        run: |
+          set -euo pipefail
+          cd /opt/projects/ui-planner
+          SHA=$(git rev-parse --short HEAD)
+          echo "deployed: $SHA  reason: ${{ inputs.reason }}"
+          docker compose build
+          docker compose up -d --remove-orphans
           docker ps --filter name=ui-planner
