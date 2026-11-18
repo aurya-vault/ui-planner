@@ -59,6 +59,7 @@ jobs:
           docker compose -f docker/ui-planner/docker-compose.yml build
           for img in $(docker compose -f docker/ui-planner/docker-compose.yml config --images); do
             docker tag "$img" "${img%:*}:$SHA" 2>/dev/null || true
+            echo "image tagged: ${img%:*}:$SHA"
           done
           docker compose -f docker/ui-planner/docker-compose.yml up -d --remove-orphans
           docker ps --filter name=ui-planner
