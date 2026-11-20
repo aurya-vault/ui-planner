@@ -22,6 +22,14 @@ concurrency:
   group: deploy-ui-planner
   cancel-in-progress: false
 
+# 触发参数先绑成环境变量,脚本里只引用 $VAR:
+# 直接把 ${{ }} 拼进 shell 会被注入命令(分支名、回退原因都是外部可控输入)
+env:
+  EVENT_NAME: ${{ github.event_name }}
+  HEAD_REF: ${{ github.head_ref }}
+  INPUT_REF: ${{ inputs.ref }}
+  INPUT_REASON: ${{ inputs.reason }}
+
 jobs:
   test:
     runs-on: aurya
@@ -33,11 +41,11 @@ jobs:
           set -euo pipefail
           cd /opt/projects/ui-planner
           git fetch --all --tags --prune
-          if [ "${{ github.event_name }}" = "pull_request" ]; then
-            git fetch origin "${{ github.head_ref }}"
+          if [ "$EVENT_NAME" = "pull_request" ]; then
+            git fetch origin "$HEAD_REF"
             git checkout --detach FETCH_HEAD
-          elif [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ -n "${{ inputs.ref }}" ]; then
-            git checkout --detach "${{ inputs.ref }}"
+          elif [ "$EVENT_NAME" = "workflow_dispatch" ] && [ -n "$INPUT_REF" ]; then
+            git checkout --detach "$INPUT_REF"
           else
             git reset --hard origin/main
           fi
@@ -55,7 +63,7 @@ jobs:
           set -euo pipefail
           cd /opt/projects/ui-planner
           SHA=$(git rev-parse --short HEAD)
-          echo "deployed: $SHA  reason: ${{ inputs.reason }}"
+          echo "deployed: $SHA  reason: $INPUT_REASON"
           docker compose -f docker/ui-planner/docker-compose.yml build
           for img in $(docker compose -f docker/ui-planner/docker-compose.yml config --images); do
             docker tag "$img" "${img%:*}:$SHA" 2>/dev/null || true
