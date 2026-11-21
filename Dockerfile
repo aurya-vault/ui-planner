@@ -7,7 +7,7 @@ RUN corepack enable && pnpm config set registry https://registry.npmmirror.com &
 WORKDIR /app
 
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
-RUN --mount=type=cache,id=aurya-pnpm-store,target=/root/.local/share/pnpm/store pnpm install --frozen-lockfile
+RUN --mount=type=cache,id=aurya-pnpm-store,target=/root/.local/share/pnpm/store for i in 1 2 3 4; do pnpm install --frozen-lockfile && break; [ $i = 4 ] && exit 1; echo "pnpm install 重试 $i"; sleep 5; done
 
 COPY . .
 RUN pnpm run build
@@ -26,7 +26,7 @@ ENV HOST=0.0.0.0
 ENV PORT=3000
 
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
-RUN --mount=type=cache,id=aurya-pnpm-store,target=/root/.local/share/pnpm/store pnpm install --frozen-lockfile --prod
+RUN --mount=type=cache,id=aurya-pnpm-store,target=/root/.local/share/pnpm/store for i in 1 2 3 4; do pnpm install --frozen-lockfile --prod && break; [ $i = 4 ] && exit 1; echo "pnpm install 重试 $i"; sleep 5; done
 
 COPY api ./api
 COPY --from=build /app/dist ./dist
