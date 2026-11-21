@@ -3,6 +3,10 @@
 本文件在**发布时**从提交历史归纳;平时不必维护 `Unreleased`。
 版本号遵循 semver:MAJOR = 对外契约不兼容;MINOR = 新功能;PATCH = 修复。
 
+## [1.0.2] - 2026-11-21
+
+- Dockerfile 的 pnpm install 加最多 4 次重试,应对 corepack/镜像偶发 DNS 与连接失败
+
 ## [1.0.1] - 2026-11-21
 
 **流水线**
