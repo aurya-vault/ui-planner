@@ -32,26 +32,24 @@ env:
 
 jobs:
   test:
-    runs-on: aurya
+    runs-on: ubuntu-latest
     if: github.actor == 'pxMan79'
-    timeout-minutes: 30
+    timeout-minutes: 20
     steps:
-      - name: Sync source
-        run: |
-          set -euo pipefail
-          cd /opt/projects/ui-planner
-          git fetch --all --tags --prune
-          if [ "$EVENT_NAME" = "pull_request" ]; then
-            git fetch origin "$HEAD_REF"
-            git checkout --detach FETCH_HEAD
-          elif [ "$EVENT_NAME" = "workflow_dispatch" ] && [ -n "$INPUT_REF" ]; then
-            git checkout --detach "$INPUT_REF"
-          else
-            git reset --hard origin/main
-          fi
-          echo "test ref: $(git rev-parse HEAD)"
-      # - name: Test
-      #   在这里跑一次性容器的测试/冒烟;失败则 deploy 不会执行(needs: test)
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.25.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - name: Install
+        run: pnpm install --frozen-lockfile
+      - name: Build
+        run: pnpm build
+      - name: Test
+        run: pnpm test
 
   deploy:
     needs: test
