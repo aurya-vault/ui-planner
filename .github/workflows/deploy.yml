@@ -51,9 +51,37 @@ jobs:
       - name: Test
         run: pnpm test
 
+  # 硬门:直推 main 的代码不部署(私有仓当前计划开不了 branch protection,用部署门兜底)。
+  # 只改 *.md / docs 的推送已经被上面的 paths-ignore 挡在 workflow 外;能走到这里的必须是已合并 PR。
+  guard:
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+    steps:
+      - name: 提交必须关联已合并 PR
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          # 合并后「PR ↔ 提交」的关联有几秒索引延迟,重试 60 秒再判失败
+          for i in $(seq 1 20); do
+            body=$(curl -sS -H "Authorization: Bearer $GH_TOKEN" \
+              -H "Accept: application/vnd.github+json" \
+              "$GITHUB_API_URL/repos/$GITHUB_REPOSITORY/commits/$GITHUB_SHA/pulls" || true)
+            if printf '%s' "$body" | grep -q '"merged_at": *"[0-9]'; then
+              echo "已关联已合并 PR"; exit 0
+            fi
+            sleep 3
+          done
+          echo "::error::$GITHUB_SHA 没有关联的已合并 PR。代码改动必须走 PR;直接推 main 不会再部署。"
+          printf '%s' "$body" | head -c 300; echo
+          exit 1
+
   deploy:
-    needs: test
-    if: github.event_name != 'pull_request' && github.actor == 'pxMan79'
+    needs: [test, guard]
+    if: github.event_name != 'pull_request' && github.actor == 'pxMan79' && (needs.guard.result == 'success' || needs.guard.result == 'skipped')
     runs-on: aurya
     steps:
       - name: Deploy
